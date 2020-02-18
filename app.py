@@ -13,6 +13,7 @@ from logging import Formatter, FileHandler
 from flask_wtf import Form
 from forms import *
 from flask_migrate import Migrate
+from sqlalchemy.orm import load_only
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -34,6 +35,9 @@ class Venue_Genre(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
 	venue_id = db.Column(db.Integer, db.ForeignKey('venues.id'), nullable=False)
 	genre = db.Column(db.String(50), nullable=False)
+
+	def __repr__(self):
+	 return f'<Venue_Genre venue_id:{self.venue_id} genre: {self.genre}>'
 
 
 class Venue(db.Model):
@@ -65,6 +69,9 @@ class Artist_Genre(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
 	artist_id = db.Column(db.Integer, db.ForeignKey('artists.id'), nullable=False)
 	genre = db.Column(db.String(50), nullable=False)
+
+	def __repr__(self):
+	 return f'<Artist_Genre artist_id:{self.artist_id} genre: {self.genre}>'
 
 
 class Artist(db.Model):
@@ -134,20 +141,44 @@ def venues():
 	}]
 	return render_template('pages/venues.html', areas=data);
 
+# Working
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
 	# TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
 	# seach for Hop should return "The Musical Hop".
 	# search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
-	response={
-		"count": 1,
-		"data": [{
-			"id": 2,
-			"name": "The Dueling Pianos Bar",
-			"num_upcoming_shows": 0,
-		}]
+
+	search_query = request.form.get('search_term', '')
+
+	search_response = {
+		"count": 0,
+		"data": []
 	}
-	return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
+
+	fields = ['id', 'name']
+	venue_search_results = db.session.query(Venue).filter(Venue.name.ilike(f'%{search_query}%')).options(load_only(*fields)).all()
+
+	num_upcoming_shows = 0
+
+	search_response['count'] = len(venue_search_results)
+
+	for result in venue_search_results:
+		item = {
+			"id": result.id,
+			"name": result.name,
+			"num_upcoming_shows": num_upcoming_shows
+		}
+		search_response['data'].append(item)
+
+	# response={
+	# 	"count": 1,
+	# 	"data": [{
+	# 		"id": 2,
+	# 		"name": "The Dueling Pianos Bar",
+	# 		"num_upcoming_shows": 0,
+	# 	}]
+	# }
+	return render_template('pages/search_venues.html', results=search_response, search_term=request.form.get('search_term', ''))
 
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
@@ -265,37 +296,67 @@ def delete_venue(venue_id):
 	# clicking that button delete it from the db then redirect the user to the homepage
 	return None
 
+
+
 #  Artists
 #  ----------------------------------------------------------------
 @app.route('/artists')
 def artists():
-	# TODO: replace with real data returned from querying the database
-	data=[{
-		"id": 4,
-		"name": "Guns N Petals",
-	}, {
-		"id": 5,
-		"name": "Matt Quevedo",
-	}, {
-		"id": 6,
-		"name": "The Wild Sax Band",
-	}]
-	return render_template('pages/artists.html', artists=data)
+	# Done TODO: replace with real data returned from querying the database
+	
+	fields = ['id', 'name']
+	artists_data = db.session.query(Artist).options(load_only(*fields)).all()
 
+	# mockdata=[{
+	# 	"id": 4,
+	# 	"name": "Guns N Petals",
+	# }, {
+	# 	"id": 5,
+	# 	"name": "Matt Quevedo",
+	# }, {
+	# 	"id": 6,
+	# 	"name": "The Wild Sax Band",
+	# }]
+	return render_template('pages/artists.html', artists=artists_data)
+
+# Working
 @app.route('/artists/search', methods=['POST'])
 def search_artists():
 	# TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
 	# seach for "A" should return "Guns N Petals", "Matt Quevado", and "The Wild Sax Band".
 	# search for "band" should return "The Wild Sax Band".
-	response={
-		"count": 1,
-		"data": [{
-			"id": 4,
-			"name": "Guns N Petals",
-			"num_upcoming_shows": 0,
-		}]
+
+	search_query = request.form.get('search_term', '')
+
+	search_response = {
+		"count": 0,
+		"data": []
 	}
-	return render_template('pages/search_artists.html', results=response, search_term=request.form.get('search_term', ''))
+
+	fields = ['id', 'name']
+	artist_search_results = db.session.query(Artist).filter(Artist.name.ilike(f'%{search_query}%')).options(load_only(*fields)).all()
+
+	num_upcoming_shows = 0
+
+	search_response['count'] = len(artist_search_results)
+
+	for result in artist_search_results:
+		item = {
+			"id": result.id,
+			"name": result.name,
+			"num_upcoming_shows": num_upcoming_shows
+		}
+		search_response['data'].append(item)
+
+	# mock_response={
+	# 	"count": 1,
+	# 	"data": [{
+	# 		"id": 4,
+	# 		"name": "Guns N Petals",
+	# 		"num_upcoming_shows": 0,
+	# 	}]
+	# }
+	return render_template('pages/search_artists.html', results=search_response, search_term=request.form.get('search_term', ''))
 
 @app.route('/artists/<int:artist_id>')
 def show_artist(artist_id):

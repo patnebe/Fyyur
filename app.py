@@ -1,7 +1,7 @@
 #----------------------------------------------------------------------------#
 # Imports
 #----------------------------------------------------------------------------#
-
+import sys
 import json
 import dateutil.parser
 import babel
@@ -141,7 +141,7 @@ def venues():
 	}]
 	return render_template('pages/venues.html', areas=data);
 
-# Working
+# Done
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
 	# TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
@@ -272,20 +272,51 @@ def create_venue_form():
 	form = VenueForm()
 	return render_template('forms/new_venue.html', form=form)
 
+# Done
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
-		inputData = request.content_type
-		# send the data from the client throug AJAX cos regular forms can't send json data
-		print(inputData)
-	# TODO: insert form data as a new Venue record in the db, instead
-	# TODO: modify data to be the data object returned from db insertion
+		
+		try:
+			name = request.form.get('name')
+			city = request.form.get('city')
+			state = request.form.get('state')
+			address = request.form.get('address')
+			phone = request.form.get('phone')
+			genres = request.form.getlist('genres')
+			facebook_link = request.form.get('facebook_link')
 
-	# on successful db insert, flash success
-		flash('Venue ' + request.form['name'] + ' was successfully listed!')
+			# TODO: insert form data as a new Venue record in the db, instead
+			new_venue = Venue(name=name, city=city, state=state, address=address, phone=phone, facebook_link=facebook_link)
+			
+			genres_for_this_venue = []
+			for i in range(len(genres)):
+				current_genre = f'genre{i}'
+				current_genre = Venue_Genre(genre=genres[i])
+				current_genre.venue = new_venue
+				genres_for_this_venue.append(current_genre)
+
+			db.session.add(new_venue)
+			db.session.commit()
+
+			# TODO: modify data to be the data object returned from db insertion
+			db.session.refresh(new_venue)
+			flash('Venue ' + new_venue.name + ' was successfully listed!')
+
+		except:
+			db.session.rollback()
+			print(sys.exc_info())
+			flash('An error occurred. Venue ' + request.form.get('name') + ' could not be listed.')
+
+		finally:
+			db.session.close()
+			# on successful db insert, flash success
+			return render_template('pages/home.html')
+			
+	
 	# TODO: on unsuccessful db insert, flash an error instead.
 	# e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
 	# see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
-		return render_template('pages/home.html')
+		
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
 def delete_venue(venue_id):
@@ -319,7 +350,7 @@ def artists():
 	# }]
 	return render_template('pages/artists.html', artists=artists_data)
 
-# Working
+# Done
 @app.route('/artists/search', methods=['POST'])
 def search_artists():
 	# TODO: implement search on artists with partial string search. Ensure it is case-insensitive.

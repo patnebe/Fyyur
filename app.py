@@ -82,7 +82,7 @@ class Artist(db.Model):
 	state = db.Column(db.String(120), nullable=False)
 	phone = db.Column(db.String(120), nullable=False) #confirm if it is nullable and this should tally with what is in forms.py
 	# genres = db.Column(db.String(120), nullable=False) #confirm the data type for this
-	genres = db.relationship('Artist_Genre', backref='venue', lazy=True)
+	genres = db.relationship('Artist_Genre', backref='artist', lazy=True)
 	image_link = db.Column(db.String(500), nullable=True)
 	facebook_link = db.Column(db.String(120), nullable=True)
 	venues = db.relationship('Venue', secondary=shows, backref=db.backref('artists', lazy=True))
@@ -289,9 +289,8 @@ def create_venue_submission():
 			new_venue = Venue(name=name, city=city, state=state, address=address, phone=phone, facebook_link=facebook_link)
 			
 			genres_for_this_venue = []
-			for i in range(len(genres)):
-				current_genre = f'genre{i}'
-				current_genre = Venue_Genre(genre=genres[i])
+			for genre in genres:
+				current_genre = Venue_Genre(genre=genre)
 				current_genre.venue = new_venue
 				genres_for_this_venue.append(current_genre)
 
@@ -531,18 +530,45 @@ def create_artist_form():
 
 @app.route('/artists/create', methods=['POST'])
 def create_artist_submission():
-	error = False
-	body = {}
-	
 	# called upon submitting the new artist listing form
-	# TODO: insert form data as a new Venue record in the db, instead
-	# TODO: modify data to be the data object returned from db insertion
+
+	try:
+		name = request.form.get('name')
+		city = request.form.get('city')
+		state = request.form.get('state')
+		phone = request.form.get('phone')
+		genres = request.form.getlist('genres')
+		facebook_link = request.form.get('facebook_link')
+
+		# TODO: insert form data as a new Artist record in the db, instead
+		new_artist = Artist(name=name, city=city, state=state, phone=phone, facebook_link=facebook_link)
+		
+		genres_for_this_artist = []
+		for genre in genres:
+			current_genre = Artist_Genre(genre=genre)
+			current_genre.artist = new_artist
+			genres_for_this_artist.append(current_genre)
+
+		db.session.add(new_artist)
+		db.session.commit()
+		# TODO: modify data to be the data object returned from db insertion
+		db.session.refresh(new_artist)
+		flash('Artist ' + new_artist.name + ' was successfully listed!')
+	except:
+		db.session.rollback()
+		sys.print_exc_info()
+		flash('An error occurred. Venue ' + request.form.get('name') + ' could not be listed.')
+
+	finally:
+		db.session.close()
+		return render_template('pages/home.html')
+	
 
 	# on successful db insert, flash success
-	flash('Artist ' + request.form['name'] + ' was successfully listed!')
+	
 	# TODO: on unsuccessful db insert, flash an error instead.
 	# e.g., flash('An error occurred. Artist ' + data.name + ' could not be listed.')
-	return render_template('pages/home.html')
+	
 
 
 #  Shows

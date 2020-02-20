@@ -49,7 +49,6 @@ class Venue(db.Model):
 	address = db.Column(db.String(120), nullable=False)
 	phone = db.Column(db.String(120), nullable=True)
 	genres = db.relationship('Venue_Genre', backref='venue', lazy=True)
-	# genres = db.Column(db.String(120), nullable=False) #How to handle input of multiple genres?
 	seeking_talent = db.Column(db.Boolean, nullable=True, default=False)
 	seeking_description = db.Column(db.String(120), nullable=True)
 	image_link = db.Column(db.String(500), nullable=True)
@@ -57,11 +56,17 @@ class Venue(db.Model):
 	website = db.Column(db.String(120), nullable=True)
 
 
-shows = db.Table('shows',
-	db.Column('artist_id', db.Integer, db.ForeignKey('artists.id'), primary_key=True),
-	db.Column('venue_id', db.Integer, db.ForeignKey('venues.id'), primary_key=True),
-	db.Column('start_time', db.DateTime(), nullable=False)
-) 
+# shows = db.Table('shows',
+# 	db.Column('artist_id', db.Integer, db.ForeignKey('artists.id'), primary_key=True),
+# 	db.Column('venue_id', db.Integer, db.ForeignKey('venues.id'), primary_key=True),
+# 	db.Column('start_time', db.DateTime(), nullable=False)
+# ) 
+
+class Show(db.Model):
+	__tablename__ = 'shows'
+	artist_id = db.Column(db.Integer, db.ForeignKey('artists.id'), primary_key=True)
+	venue_id = db.Column(db.Integer, db.ForeignKey('venues.id'), primary_key=True)
+	start_time = db.Column(db.DateTime, nullable=False)
 
 
 class Artist_Genre(db.Model):
@@ -80,13 +85,15 @@ class Artist(db.Model):
 	name = db.Column(db.String(120), nullable=False)
 	city = db.Column(db.String(120), nullable=False)
 	state = db.Column(db.String(120), nullable=False)
-	phone = db.Column(db.String(120), nullable=False) #confirm if it is nullable and this should tally with what is in forms.py
-	# genres = db.Column(db.String(120), nullable=False) #confirm the data type for this
+	phone = db.Column(db.String(120), nullable=False) 
 	genres = db.relationship('Artist_Genre', backref='artist', lazy=True)
 	image_link = db.Column(db.String(500), nullable=True)
 	facebook_link = db.Column(db.String(120), nullable=True)
-	venues = db.relationship('Venue', secondary=shows, backref=db.backref('artists', lazy=True))
+	venues = db.relationship('Venue', secondary='shows', backref=db.backref('artists', lazy=True))
 
+# artist = db.query(Artist)
+# Venue = db.query(venue)
+# artist.venues = []
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -528,6 +535,7 @@ def create_artist_form():
 	form = ArtistForm()
 	return render_template('forms/new_artist.html', form=form)
 
+# Done
 @app.route('/artists/create', methods=['POST'])
 def create_artist_submission():
 	# called upon submitting the new artist listing form
@@ -578,7 +586,7 @@ def create_artist_submission():
 def shows():
 	# displays list of shows at /shows
 	# TODO: replace with real venues data.
-	#       num_shows should be aggregated based on number of upcoming shows per venue.
+	# num_shows should be aggregated based on number of upcoming shows per venue.
 	data=[{
 		"venue_id": 1,
 		"venue_name": "The Musical Hop",
@@ -628,13 +636,56 @@ def create_show_submission():
   	
 	# called to create new shows in the db, upon submitting new show listing form
 	# TODO: insert form data as a new Show record in the db, instead
+	
+
+	errors = {
+		'invalid_artist_id': False,
+		'invalid_venue_id': False
+	}
+
+	try:
+		artist_id = request.form.get('artist_id')
+		venue_id = request.form.get('venue_id')
+		start_time = request.form.get('start_time')
+
+		# TODO-STEP1: Check if artist is present in the db
+		found_artist = Artist.query.get(artist_id)
+		if found_artist is None:
+			errors['invalid_artist_id'] = True
+
+		# TODO-STEP2: Check if venue is present in the db
+		found_venue = Venue.query.get(venue_id)
+		if found_venue is None:
+			errors['invalid_venue_id'] = True
+		
+		# TODO-STEP3: If the above tests pass, add the record to the DB as usual. Else, set the errors above.
+		if found_venue is not None and found_artist is not None:
+			new_show = Show(artist_id=found_artist.id, venue_id=found_venue.id, start_time=start_time)
+			db.session.add(new_show)
+			db.session.commit()
+			flash('The show by '+ found_artist.name + ' has been successfully scheduled at the following venue: ' + found_venue.name)
+
+	except:
+		sys.print_exc_info()
+		db.session.rollback()
+		flash('Something went wrong and the show was not created. Please try again.')
+		
+	finally:
+		db.session.close()
+	
+	if errors['invalid_artist_id'] is True:
+		flash('There is no artist with id ' + request.form.get('artist_id') + ' in our records')
+	elif errors['invalid_venue_id'] is True:
+		flash('There is no venue with id ' + request.form.get('venue_id') + ' in our records')
+
+	return render_template('pages/home.html')
 
 	# on successful db insert, flash success
 	flash('Show was successfully listed!')
 	# TODO: on unsuccessful db insert, flash an error instead.
 	# e.g., flash('An error occurred. Show could not be listed.')
 	# see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
-	return render_template('pages/home.html')
+	
 
 @app.errorhandler(404)
 def not_found_error(error):

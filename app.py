@@ -314,6 +314,72 @@ def show_venue(venue_id):
         "upcoming_shows_count": 1,
     }
     # data = list(filter(lambda d: d["id"] == venue_id, [data1, data2, data3]))[0]
+
+    data = {}
+
+    try:
+        requested_venue = Venue.query.get(venue_id)
+
+        if requested_venue is None:
+            return not_found_error(404)
+
+        genres = []
+        for item in requested_venue.genres:
+            genres.append(item.genre)
+
+        shows = Show.query.filter_by(venue_id=venue_id)
+
+        today = datetime.datetime.now()
+
+        raw_past_shows = shows.filter(Show.start_time < today).all()
+        past_shows = []
+        for show in raw_past_shows:
+            artist = Artist.query.get(show.artist_id)
+            show_data = {
+                "artist_id": artist.id,
+                "artist_name": artist.name,
+                "artist_image_link": artist.image_link,
+                "start_time": str(show.start_time),
+            }
+            past_shows.append(show_data)
+
+        raw_upcoming_shows = shows.filter(Show.start_time >= today).all()
+        upcoming_shows = []
+        for show in raw_upcoming_shows:
+            artist = Artist.query.get(show.artist_id)
+            show_data = {
+                "artist_id": artist.id,
+                "artist_name": artist.name,
+                "artist_image_link": artist.image_link,
+                "start_time": str(show.start_time),
+            }
+            upcoming_shows.append(show_data)
+
+        data = {
+            "id": requested_venue.id,
+            "name": requested_venue.name,
+            "genres": genres,
+            "address": requested_venue.address,
+            "city": requested_venue.city,
+            "state": requested_venue.state,
+            "phone": requested_venue.phone,
+            "website": requested_venue.website,
+            "facebook_link": requested_venue.facebook_link,
+            "seeking_talent": requested_venue.seeking_talent,
+            "image_link": requested_venue.image_link,
+            "past_shows": past_shows,
+            "upcoming_shows": upcoming_shows,
+            "past_shows_count": len(past_shows),
+            "upcoming_shows_count": len(upcoming_shows),
+        }
+
+    except:
+        print(sys.exc_info())
+        flash("Something went wrong. Please try again.")
+
+    finally:
+        db.session.close()
+
     return render_template("pages/show_venue.html", venue=data)
 
 
@@ -575,7 +641,7 @@ def show_artist(artist_id):
             }
             past_shows.append(show_data)
 
-        raw_upcoming_shows = shows.filter(Show.start_time > today).all()
+        raw_upcoming_shows = shows.filter(Show.start_time >= today).all()
         upcoming_shows = []
         for show in raw_upcoming_shows:
             venue = Venue.query.get(show.venue_id)
@@ -603,11 +669,11 @@ def show_artist(artist_id):
         }
 
     except:
-			print(sys.exc_info())
-			flash("Something went wrong. Please try again.")
+        print(sys.exc_info())
+        flash("Something went wrong. Please try again.")
 
     finally:
-      db.session.close()
+        db.session.close()
 
     return render_template("pages/show_artist.html", artist=data)
 
@@ -709,6 +775,7 @@ def create_artist_submission():
         # TODO: modify data to be the data object returned from db insertion
         db.session.refresh(new_artist)
         flash("Artist " + new_artist.name + " was successfully listed!")
+
     except:
         db.session.rollback()
         print(sys.exc_info())

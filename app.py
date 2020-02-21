@@ -14,6 +14,7 @@ from flask import (
     redirect,
     url_for,
     abort,
+    jsonify,
 )
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
@@ -44,7 +45,9 @@ migrate = Migrate(app, db)
 class Venue_Genre(db.Model):
     __tablename__ = "venue_genres"
     id = db.Column(db.Integer, primary_key=True)
-    venue_id = db.Column(db.Integer, db.ForeignKey("venues.id"), nullable=False)
+    venue_id = db.Column(
+        db.Integer, db.ForeignKey("venues.id", ondelete="CASCADE"), nullable=False
+    )
     genre = db.Column(db.String(50), nullable=False)
 
     def __repr__(self):
@@ -59,7 +62,9 @@ class Venue(db.Model):
     state = db.Column(db.String(120), nullable=False)
     address = db.Column(db.String(120), nullable=False)
     phone = db.Column(db.String(120), nullable=True)
-    genres = db.relationship("Venue_Genre", backref="venue", lazy=True)
+    genres = db.relationship(
+        "Venue_Genre", passive_deletes=True, backref="venue", lazy=True,
+    )
     seeking_talent = db.Column(db.Boolean, nullable=True, default=False)
     seeking_description = db.Column(db.String(120), nullable=True)
     image_link = db.Column(
@@ -81,7 +86,9 @@ class Venue(db.Model):
 class Show(db.Model):
     __tablename__ = "shows"
     artist_id = db.Column(db.Integer, db.ForeignKey("artists.id"), primary_key=True)
-    venue_id = db.Column(db.Integer, db.ForeignKey("venues.id"), primary_key=True)
+    venue_id = db.Column(
+        db.Integer, db.ForeignKey("venues.id", ondelete="CASCADE"), primary_key=True
+    )
     start_time = db.Column(db.DateTime, nullable=False)
 
 
@@ -224,6 +231,7 @@ def search_venues():
     )
 
 
+# Done
 @app.route("/venues/<int:venue_id>")
 def show_venue(venue_id):
     # shows the venue page with the given venue_id
@@ -453,10 +461,28 @@ def create_venue_submission():
 def delete_venue(venue_id):
     # TODO: Complete this endpoint for taking a venue_id, and using
     # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
+    venue_name = Venue.query.get(venue_id).name
+    try:
+        venue_to_be_deleted = db.session.query(Venue).filter(Venue.id == venue_id)
+        venue_to_be_deleted.delete()
+        db.session.commit()
+        flash("Venue: " + venue_name + " was successfully deleted.")
 
+    except:
+        db.session.rollback()
+        print(sys.exc_info())
+        return jsonify(
+            {
+                "errorMessage": "Something went wrong. This venue was not successfully deleted. Please try again."
+            }
+        )
+
+    finally:
+        db.session.close()
+
+    return render_template("pages/home.html")
     # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
     # clicking that button delete it from the db then redirect the user to the homepage
-    return None
 
 
 #  Artists

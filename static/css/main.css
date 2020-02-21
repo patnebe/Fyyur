@@ -209,3 +209,16 @@ h2.monospace {
 .subtitle {
   opacity: 0.5;
 }
+
+#deleteVenue {
+  color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  background-color: white;
+}
+
+#deleteVenue:hover {
+  color: #fff !important;
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  font-weight: bold;
+}

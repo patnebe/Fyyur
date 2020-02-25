@@ -219,7 +219,7 @@ def venues():
 
                 upcoming_shows = (
                     Show.query.filter_by(venue_id=venue_id)
-                    .filter(Showw.start_time > today)
+                    .filter(Show.start_time > today)
                     .all()
                 )
 

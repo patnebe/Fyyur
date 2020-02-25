@@ -129,13 +129,24 @@
 
     deleteVenueButton.addEventListener('click', (e) => {
       venueId = event.target.dataset.id;
-      endpoint = `/venues/${venueId}`;
+      endpoint = `/venues/${venueId}/delete`;
       fetch(endpoint, {
-        method: 'DELETE'
+        method: 'POST'
       })
         .then(validateResponse)
+        .then(validatedResponse => window.location.href = validatedResponse.url)
         .catch(errorHandler);
     });
+
+    const editRecord = () => {
+      const currentUrl = window.location.href;
+      window.location.href = `${currentUrl}/edit`
+    };
+
+    const editArtist = () => {
+      const currentUrl = window.location.href;
+      window.location.href = `${currentUrl}/edit`
+    }
 
   </script>
   <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>

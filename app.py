@@ -24,6 +24,7 @@ from flask_wtf import Form
 from forms import *
 from flask_migrate import Migrate
 from sqlalchemy.orm import load_only
+from sqlalchemy import distinct
 import datetime
 
 # ----------------------------------------------------------------------------#
@@ -175,7 +176,7 @@ def index():
 def venues():
     # TODO: replace with real venues data.
     #       num_shows should be aggregated based on number of upcoming shows per venue.
-    data = [
+    data1 = [
         {
             "city": "San Francisco",
             "state": "CA",
@@ -196,7 +197,50 @@ def venues():
             ],
         },
     ]
-    return render_template("pages/venues.html", areas=data)
+
+    response_data = []
+
+    try:
+        venue_locations = db.session.query(distinct(Venue.city), Venue.state).all()
+
+        today = datetime.datetime.now()
+
+        for location in venue_locations:
+            city = location[0]
+            state = location[1]
+
+            location_data = {"city": city, "state": state, "venues": []}
+
+            venues = Venue.query.filter_by(city=city, state=state).all()
+
+            for venue in venues:
+                venue_name = venue.name
+                venue_id = venue.id
+
+                upcoming_shows = (
+                    Show.query.filter_by(venue_id=venue_id)
+                    .filter(Showw.start_time > today)
+                    .all()
+                )
+
+                venue_data = {
+                    "id": venue_id,
+                    "name": venue_name,
+                    "num_upcoming_shows": len(upcoming_shows),
+                }
+
+                location_data["venues"].append(venue_data)
+
+            response_data.append(location_data)
+
+    except:
+        db.session.rollback()
+        print(sys.exc_info())
+        flash("Something went wrong. Please try again.")
+        return render_template("pages/home.html")
+
+    finally:
+        return render_template("pages/venues.html", areas=response_data)
 
 
 # Done
@@ -218,26 +262,15 @@ def search_venues():
         .all()
     )
 
-    num_upcoming_shows = 0
-
     search_response["count"] = len(venue_search_results)
 
     for result in venue_search_results:
         item = {
             "id": result.id,
             "name": result.name,
-            "num_upcoming_shows": num_upcoming_shows,
         }
         search_response["data"].append(item)
 
-    # response={
-    # 	"count": 1,
-    # 	"data": [{
-    # 		"id": 2,
-    # 		"name": "The Dueling Pianos Bar",
-    # 		"num_upcoming_shows": 0,
-    # 	}]
-    # }
     return render_template(
         "pages/search_venues.html",
         results=search_response,
@@ -250,7 +283,6 @@ def search_venues():
 def show_venue(venue_id):
     # shows the venue page with the given venue_id
     # TODO: replace with real venue data from the venues table, using venue_id
-    
 
     data = {}
 
@@ -386,7 +418,7 @@ def create_venue_submission():
 # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
 
 
-@app.route("/venues/<venue_id>", methods=["DELETE"])
+@app.route("/venues/<venue_id>/delete", methods=["POST"])
 def delete_venue(venue_id):
     # TODO: Complete this endpoint for taking a venue_id, and using
     # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
@@ -408,10 +440,17 @@ def delete_venue(venue_id):
 
     finally:
         db.session.close()
+        return redirect(url_for("index"))
+        # return render_template("pages/home.html")
 
-    return render_template("pages/home.html")
+    # return redirect(url_for("index"))
+    # return render_template("pages/home.html")
+    # return index()
+
     # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
     # clicking that button delete it from the db then redirect the user to the homepage
+
+    # ----------------------- My solution to this was to redirect on the frontend window.location.href = response.url because I couldn't get my redirection to work properly on the backend.
 
 
 #  Artists
@@ -486,7 +525,7 @@ def search_artists():
 def show_artist(artist_id):
     # shows the venue page with the given venue_id
     # TODO: replace with real venue data from the venues table, using venue_id
-    
+
     data = {}
 
     try:
@@ -690,7 +729,6 @@ def edit_venue(venue_id):
     # TODO: populate form with values from venue with ID <venue_id>
     data = {}
 
-    # TODO: populate form with fields from artist with ID <artist_id>
     try:
         # Get data from db
         requested_venue = Venue.query.get(venue_id)
@@ -709,10 +747,11 @@ def edit_venue(venue_id):
             "name": requested_venue.name,
             "city": requested_venue.city,
             "state": requested_venue.state,
+            "address": requested_venue.address,
             "phone": requested_venue.phone,
             "genres": genres,
             "facebook_link": requested_venue.facebook_link,
-            "seeking_venue": requested_venue.seeking_artist,
+            "seeking_talent": requested_venue.seeking_talent,
             "seeking_description": requested_venue.seeking_description,
             "image_link": requested_venue.image_link,
         }

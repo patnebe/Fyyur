@@ -26,6 +26,7 @@ def insert_venue_record(data):
         db.session.rollback()
         return {"venue_insert_success": False}
 
+
 def populate_venue_table():
     data1 = {
         "name": "The Musical Hop",
@@ -73,22 +74,26 @@ def populate_venue_table():
         insert_venue_record(data)
         # Maybe write a test for this?
 
-# populate_venue_table()
 
+populate_venue_table()
 
 
 def insert_artist_record(data):
-  pass
+    pass
+
 
 def populate_artist_table():
-  pass
+    pass
+
 
 # populate_artist_table()
 
 
-
 def insert_show_record(data):
-  # populate_artist_table()
+    pass
+
+
+# populate_artist_table()
 
 
 # data1 = {
@@ -258,4 +263,3 @@ def insert_show_record(data):
 #         "past_shows_count": 0,
 #         "upcoming_shows_count": 3,
 #     }
-#     # data = list(filter(lambda d: d['id'] == artist_id, [data1, data2, data3]))[0]
